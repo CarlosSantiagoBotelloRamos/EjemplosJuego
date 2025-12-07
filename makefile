@@ -1,29 +1,100 @@
 # Directorios de origen y destino
 SRC_DIR := src
+CORE_DIR := core
+STATES_DIR := states
+GAMEPLAY_DIR := gameplay
 BIN_DIR := bin
 
-SFML := -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio -lbox2d
+# Bibliotecas SFML
+SFML := -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
 
-# Obtener todos los archivos .cpp en el directorio de origen
-CPP_FILES := $(wildcard $(SRC_DIR)/*.cpp)
+# Directorios de inclusión
+INCLUDES := -Iinclude
 
-# Generar los nombres de los archivos .exe en el directorio de destino
-EXE_FILES := $(patsubst $(SRC_DIR)/%.cpp,$(BIN_DIR)/%.exe,$(CPP_FILES))
+# Compilador y flags
+CXX := g++
+CXXFLAGS := -Wall -Wextra -std=c++17 -O2
 
-# Regla para compilar cada archivo .cpp y generar el archivo .exe correspondiente
-$(BIN_DIR)/%.exe: $(SRC_DIR)/%.cpp
-	g++ $< -o $@ $(SFML) -Iinclude
+# Archivos objeto
+OBJ_DIR := obj
+OBJECTS := $(addprefix $(OBJ_DIR)/, \
+	GameEngine.o Player.o EnemyCar.o Collision.o UI.o Spawner.o Score.o \
+	MenuState.o GameState.o GameOverState.o VehicleSelectState.o MapSelectState.o \
+	main.o CarSprite.o)
 
-# Regla por defecto para compilar todos los archivos .cpp
-all: $(EXE_FILES)
+# Ejecutable principal
+EXECUTABLE := $(BIN_DIR)/TrafficRacer.exe
 
-# Regla para ejecutar cada archivo .exe
-run%: $(BIN_DIR)/%.exe
-	./$<
+# Regla por defecto
+all: $(EXECUTABLE)
 
-# Regla para limpiar los archivos generados
+# Crear el ejecutable
+$(EXECUTABLE): $(OBJECTS) | $(BIN_DIR)
+	@echo "Linking executable..."
+	@$(CXX) $(CXXFLAGS) $(OBJECTS) -o $@ $(SFML)
+	@echo "[SUCCESS] Build complete: $(EXECUTABLE)"
+
+# Compilar archivos objeto de src/
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
+	@echo "Compiling $<..."
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+# Compilar archivos objeto de core/
+$(OBJ_DIR)/%.o: $(CORE_DIR)/%.cpp | $(OBJ_DIR)
+	@echo "Compiling $<..."
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+# Compilar archivos objeto de states/
+$(OBJ_DIR)/%.o: $(STATES_DIR)/%.cpp | $(OBJ_DIR)
+	@echo "Compiling $<..."
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+# Compilar archivos objeto de gameplay/
+$(OBJ_DIR)/%.o: $(GAMEPLAY_DIR)/%.cpp | $(OBJ_DIR)
+	@echo "Compiling $<..."
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+# Crear directorios
+$(OBJ_DIR):
+	@mkdir -p $@
+
+$(BIN_DIR):
+	@mkdir -p $@
+
+# Limpiar archivos generados
 clean:
-	rm -f $(EXE_FILES)
+	@echo "Cleaning build files..."
+	@rm -rf $(OBJ_DIR)
+	@rm -f $(EXECUTABLE)
+	@echo "[SUCCESS] Clean complete"
 
-.PHONY: all clean
-.PHONY: run-%
+# Ejecutar el programa
+run: $(EXECUTABLE)
+	@echo "[INFO] Running Traffic Racer..."
+	@$(EXECUTABLE)
+
+# Recompilar todo
+rebuild: clean all
+
+# Ayuda
+help:
+	@echo ""
+	@echo "Traffic Racer - Build Commands"
+	@echo "==============================="
+	@echo ""
+	@echo "  make              - Compile project"
+	@echo "  make rebuild      - Clean and compile"
+	@echo "  make run          - Compile and run"
+	@echo "  make clean        - Remove build files"
+	@echo "  make help         - Show this help"
+	@echo ""
+
+# Verificar compilación sin linking
+check:
+	@echo "Checking compilation..."
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) -fsyntax-only $(SRC_DIR)/*.cpp
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) -fsyntax-only $(CORE_DIR)/*.cpp
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) -fsyntax-only $(STATES_DIR)/*.cpp
+	@echo "[SUCCESS] No syntax errors found"
+
+.PHONY: all clean run rebuild help check
